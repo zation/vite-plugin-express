@@ -1,0 +1,6 @@
+index.d.ts
+index.js
+tsconfig.tsbuildinfo
+node_modules/
+.idea/
+*.log

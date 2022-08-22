@@ -1,6 +1,6 @@
 # Vite Plugin Express
 
-> A [vite](https://vitejs.dev/) plugin to allow you to integrate your express server into vite dev server.
+> A [vite](https://vitejs.dev/) plugin to integrate the express server into vite dev server.
 
 ## Features
 

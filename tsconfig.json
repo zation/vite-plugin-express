@@ -1,18 +1,19 @@
 {
   "compilerOptions": {
-    "composite": true,
-    "module": "ESNext",
-    "moduleResolution": "Node",
+    "moduleResolution": "node",
+    "strict": true,
+    "noUnusedLocals": true,
+    "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "outDir": "./",
+    "target": "esnext",
+    "module": "esnext",
+    "skipLibCheck": true,
     "lib": [
-      "es2015"
-    ]
+      "esnext"
+    ],
+    "sourceMap": true
   },
-  "include": [
-    "./index.ts"
-  ],
   "exclude": [
-    "./node_modules"
+    "node_modules"
   ]
 }

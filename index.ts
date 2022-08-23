@@ -1,6 +1,5 @@
 import { globby } from 'globby';
 import express, {
-  Express,
   Handler,
 } from 'express';
 import cors from 'cors';
@@ -8,28 +7,31 @@ import bodyParser from 'body-parser';
 import type {
   Plugin,
   ViteDevServer,
+  Connect,
 } from 'vite';
 import { resolve } from 'path';
 
 export interface Options {
   middlewareFiles: string | string[]
+  prefixUrl?: string
   defaultMiddlewares?: Handler[]
 }
 
-interface Middlewares {
-  [path: string]: Handler
-}
-
-const startApp = async (app: Express, middlewareFiles: string | string[], server: ViteDevServer, defaultMiddlewares?: Handler[]) => {
-  let middlewares: Middlewares = {};
+const startApp = async (server: ViteDevServer, options: Options) => {
+  const newApp = express();
+  const {
+    middlewareFiles,
+    prefixUrl = '/api',
+    defaultMiddlewares,
+  } = options;
   if (defaultMiddlewares) {
     defaultMiddlewares.forEach((middleware) => {
-      app.use(middleware);
+      newApp.use(prefixUrl, middleware);
     });
   } else {
-    app.use(cors());
-    app.use(bodyParser.json());
-    app.use((req, res, next) => {
+    newApp.get(prefixUrl, cors() as Handler);
+    newApp.use(prefixUrl, bodyParser.json());
+    newApp.use(prefixUrl, (req, res, next) => {
       res.header('Cache-Control', 'private, no-cache, no-store, must-revalidate');
       res.header('Expires', '-1');
       res.header('Pragma', 'no-cache');
@@ -39,31 +41,31 @@ const startApp = async (app: Express, middlewareFiles: string | string[], server
 
   const paths = await globby(middlewareFiles);
   await Promise.all(paths.map(async (path) => {
-    const fullPath = resolve(process.cwd(), path);
-    middlewares[fullPath] = (await server.ssrLoadModule(fullPath)).default;
-    server.watcher.add(resolve(process.cwd(), path));
+    newApp.use(prefixUrl, (await server.ssrLoadModule(resolve(process.cwd(), path))).default)
   }));
-  app.use((req, res, next) => {
-    Object.values(middlewares).forEach((middleware) => middleware(req, res, next));
-  });
-  server.watcher.on('change', async (path) => {
-    if (middlewares[path]) {
-      middlewares[path] = (await server.ssrLoadModule(resolve(process.cwd(), path))).default;
-    }
-  });
 
-  return app;
+  return { newApp, newPaths: paths.map((path) => resolve(process.cwd(), path)) };
 };
 
-export default ({ middlewareFiles, defaultMiddlewares }: Options): Plugin => {
-  const app = express();
+export default (options: Options): Plugin => {
+  let app: Connect.NextHandleFunction = (req, res, next) => next();
+  let paths: string[] = [];
   return {
     name: 'vite:middleware',
     apply: 'serve',
     configureServer: (server) => {
-      server.middlewares.use(app);
+      server.middlewares.use((req, res, next) => app(req, res, next));
       return async () => {
-        await startApp(app, middlewareFiles, server, defaultMiddlewares);
+        const { newApp, newPaths } = await startApp(server, options);
+        app = newApp;
+        paths = newPaths;
+        server.watcher.on('change', async (path) => {
+          if (paths.indexOf(path) >= 0) {
+            const { newApp, newPaths } = await startApp(server, options);
+            app = newApp;
+            paths = newPaths;
+          }
+        });
       }
     },
   };

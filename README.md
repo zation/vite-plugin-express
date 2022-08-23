@@ -67,17 +67,10 @@
   * `src/**/*.js` — matches all files in the `src` directory (any level of nesting) that have the `.js` extension.
   * `src/*.??` — matches all files in the `src` directory (only first level of nesting) that have a two-character extension.
   * `file-[01].js` — matches files: `file-0.js`, `file-1.js`.
-- defaultMiddlewares: replace the default middlewares with yours. The default middlewares are:
+- prefixUrl: the prefix url path for the dev server. The default is: `/api`
+- defaultMiddlewares: replace the default middlewares with yours. The default middlewares are: [cors](https://github.com/expressjs/cors), [bodyParser.json](https://github.com/expressjs/body-parser#bodyparserjsonoptions) and some headers:
   ```ts
-  import cors from 'cors';
-  import bodyParser from 'body-parser';
-  
-  app.use(cors());
-  app.use(bodyParser.json());
-  app.use((req, res, next) => {
-    res.header('Cache-Control', 'private, no-cache, no-store, must-revalidate');
-    res.header('Expires', '-1');
-    res.header('Pragma', 'no-cache');
-    next();
-  });
+  res.header('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+  res.header('Expires', '-1');
+  res.header('Pragma', 'no-cache');
   ```

@@ -65,7 +65,7 @@
 
 - middlewareFiles: use [globby](https://github.com/sindresorhus/globby) as the file loader, for example:
   * `src/**/*.js` — matches all files in the `src` directory (any level of nesting) that have the `.js` extension.
-  * `src/*.??` — matches all files in the `src` directory (only first level of nesting) that have a two-character extension.
+  * `src` or `src/*.??` — matches all files in the `src` directory (only first level of nesting) that have a two-character extension.
   * `file-[01].js` — matches files: `file-0.js`, `file-1.js`.
 - prefixUrl: the prefix url path for the dev server. The default is: `/api`
 - defaultMiddlewares: replace the default middlewares with yours. The default middlewares are: [cors](https://github.com/expressjs/cors), [bodyParser.json](https://github.com/expressjs/body-parser#bodyparserjsonoptions) and some headers:

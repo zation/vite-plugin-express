@@ -17,8 +17,18 @@ export interface Options {
   defaultMiddlewares?: Handler[]
 }
 
+const arePathsDifferent = (target: string[], source: string[]) => {
+  if (target.length !== source.length) {
+    return true;
+  }
+  if (target.length === 0) {
+    return false;
+  }
+  return !target.every((path) => source.indexOf(path) >= 0);
+}
+
 const startApp = async (server: ViteDevServer, options: Options) => {
-  const newApp = express();
+  const app = express();
   const {
     middlewareFiles,
     prefixUrl = '/api',
@@ -26,12 +36,12 @@ const startApp = async (server: ViteDevServer, options: Options) => {
   } = options;
   if (defaultMiddlewares) {
     defaultMiddlewares.forEach((middleware) => {
-      newApp.use(prefixUrl, middleware);
+      app.use(prefixUrl, middleware);
     });
   } else {
-    newApp.get(prefixUrl, cors() as Handler);
-    newApp.use(prefixUrl, bodyParser.json());
-    newApp.use(prefixUrl, (req, res, next) => {
+    app.get(prefixUrl, cors() as Handler);
+    app.use(prefixUrl, bodyParser.json());
+    app.use(prefixUrl, (req, res, next) => {
       res.header('Cache-Control', 'private, no-cache, no-store, must-revalidate');
       res.header('Expires', '-1');
       res.header('Pragma', 'no-cache');
@@ -39,12 +49,12 @@ const startApp = async (server: ViteDevServer, options: Options) => {
     });
   }
 
-  const paths = await globby(middlewareFiles);
+  const paths = (await globby(middlewareFiles)).map((path) => resolve(process.cwd(), path));
   await Promise.all(paths.map(async (path) => {
-    newApp.use(prefixUrl, (await server.ssrLoadModule(resolve(process.cwd(), path))).default)
+    app.use(prefixUrl, (await server.ssrLoadModule(path)).default)
   }));
 
-  return { newApp, newPaths: paths.map((path) => resolve(process.cwd(), path)) };
+  return { newApp: app, newPaths: paths };
 };
 
 export default (options: Options): Plugin => {
@@ -59,11 +69,17 @@ export default (options: Options): Plugin => {
         const { newApp, newPaths } = await startApp(server, options);
         app = newApp;
         paths = newPaths;
-        server.watcher.on('change', async (path) => {
-          if (paths.indexOf(path) >= 0) {
+        server.watcher.on('all', async (eventName, path) => {
+          if (eventName === 'add') {
             const { newApp, newPaths } = await startApp(server, options);
+            if (arePathsDifferent(paths, newPaths)) {
+              app = newApp;
+              paths = newPaths;
+            }
+          }
+          if (eventName === 'change' && paths.indexOf(path) >= 0) {
+            const { newApp } = await startApp(server, options);
             app = newApp;
-            paths = newPaths;
           }
         });
       }
